@@ -3,16 +3,13 @@
 import os
 import sys
 
-# === Check dependencies ===
 try:
     import tkinter as tk
     from tkinter import messagebox, simpledialog, filedialog
 except ImportError:
-    print("Missing tkinter.")
-    print("To install, run: sudo apt install python3-tk")
+    print("Missing tkinter. To install, run: sudo apt install python3-tk")
     sys.exit(1)
 
-# === Config ===
 APP_NAME = "NeoLT"
 NEOLT_DIR = os.path.expanduser("~/.neolt_gui")
 USERS_FILE = os.path.join(NEOLT_DIR, "users.txt")
@@ -23,7 +20,7 @@ dark_mode = False
 bg_color = "#f0f0f0"
 fg_color = "#000000"
 
-# === Theme Handling ===
+# === Theme handling ===
 def load_settings():
     global dark_mode
     if os.path.exists(SETTINGS_FILE):
@@ -42,12 +39,12 @@ def update_theme():
     bg_color = "#202124" if dark_mode else "#f0f0f0"
     fg_color = "#ffffff" if dark_mode else "#000000"
 
-# === Initial Setup ===
+# === First time setup ===
 def first_time_setup():
     os.makedirs(NEOLT_DIR, exist_ok=True)
     if not os.path.exists(USERS_FILE):
         with open(USERS_FILE, "w") as f:
-            f.write("admin:admin\n")  # Default user
+            f.write("admin:admin\n")
 
 def user_exists(username, password):
     if os.path.exists(USERS_FILE):
@@ -61,9 +58,9 @@ def add_user(username, password):
 
 def powerwash():
     import shutil
-    if messagebox.askyesno("Powerwash", "Really reset NeoLT? All users and settings will be lost."):
+    if messagebox.askyesno("Powerwash", "Reset NeoLT? All users and settings will be lost."):
         shutil.rmtree(NEOLT_DIR, ignore_errors=True)
-        messagebox.showinfo("Reset", "NeoLT has been reset. Restart the app.")
+        messagebox.showinfo("Reset", "NeoLT has been reset.")
         sys.exit(0)
 
 # === Apps ===
@@ -128,33 +125,52 @@ def settings_menu():
     update_theme()
     messagebox.showinfo("Saved", "Restart NeoLT to apply the theme.")
 
+# === Start Menu ===
+def show_start_menu(parent):
+    start_win = tk.Toplevel(parent)
+    start_win.title("Start Menu")
+    start_win.geometry("400x300")
+    start_win.configure(bg=bg_color)
+    start_win.transient(parent)
+    start_win.grab_set()
+
+    tk.Label(start_win, text="Apps", font=("Arial", 14), bg=bg_color, fg=fg_color).pack(pady=10)
+
+    app_frame = tk.Frame(start_win, bg=bg_color)
+    app_frame.pack()
+
+    def app_button(name, command):
+        tk.Button(app_frame, text=name, command=command, width=15).pack(pady=2)
+
+    app_button("NeoNote", neonote)
+    app_button("NeoCalc", neocalc)
+    app_button("NeoTerminal", neoterminal)
+    app_button("NeoSys", neosys)
+    app_button("Settings", settings_menu)
+
 # === Main Menu ===
 def main_menu():
     app = tk.Tk()
     app.title(f"NeoLT - {current_user}")
+    app.attributes("-fullscreen", True)
     app.configure(bg=bg_color)
-    tk.Label(app, text="NeoLT OS", font=("Arial", 16), bg=bg_color, fg=fg_color).pack(pady=10)
 
-    tk.Button(app, text="NeoNote", command=neonote).pack(fill="x")
-    tk.Button(app, text="NeoCalc", command=neocalc).pack(fill="x")
-    tk.Button(app, text="NeoTerminal", command=neoterminal).pack(fill="x")
-    tk.Button(app, text="NeoSys", command=neosys).pack(fill="x")
-    tk.Button(app, text="Settings", command=settings_menu).pack(fill="x")
+    desktop = tk.Frame(app, bg=bg_color)
+    desktop.pack(expand=True, fill="both")
 
-    def add_user_gui():
-        u = simpledialog.askstring("New Username", "Enter username:")
-        p = simpledialog.askstring("New Password", "Enter password:", show="*")
-        if u and p:
-            add_user(u, p)
-            messagebox.showinfo("Added", f"User '{u}' added.")
+    # Bottom "taskbar" frame
+    taskbar = tk.Frame(app, bg="#333333", height=40)
+    taskbar.pack(fill="x", side="bottom")
 
-    tk.Button(app, text="Add User", command=add_user_gui).pack(fill="x")
-    tk.Button(app, text="Logout", command=lambda: [app.destroy(), login_screen()]).pack(fill="x")
-    tk.Button(app, text="Powerwash", fg="red", command=powerwash).pack(fill="x", pady=10)
+    start_button = tk.Button(taskbar, text="⦿ Start", command=lambda: show_start_menu(app), bg="#555555", fg="white")
+    start_button.pack(side="left", padx=10, pady=5)
+
+    tk.Button(taskbar, text="Logout", command=lambda: [app.destroy(), login_screen()], bg="#555555", fg="white").pack(side="right", padx=10)
+    tk.Button(taskbar, text="Powerwash", command=powerwash, bg="#aa0000", fg="white").pack(side="right")
 
     app.mainloop()
 
-# === Login Screen ===
+# === Login screen ===
 def login_screen():
     root = tk.Tk()
     root.title("NeoLT Login")
@@ -183,18 +199,17 @@ def login_screen():
     tk.Button(root, text="Login", command=login).pack(pady=8)
     tk.Button(root, text="Powerwash", command=powerwash).pack()
 
-    # Show default login reminder if it's the first run
+    # Default user hint
     if os.path.exists(USERS_FILE):
         with open(USERS_FILE, "r") as f:
-            contents = f.read().strip()
-            if contents == "admin:admin":
+            if f.read().strip() == "admin:admin":
                 tk.Label(root, text="Default login: admin / admin", bg=bg_color, fg="gray").pack(pady=5)
 
     root.mainloop()
 
 # === Start ===
-if not os.path.exists(NEOLT_DIR):
-    first_time_setup()
-
-load_settings()
-login_screen()
+if __name__ == "__main__":
+    if not os.path.exists(NEOLT_DIR):
+        first_time_setup()
+    load_settings()
+    login_screen()
